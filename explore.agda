@@ -1,4 +1,5 @@
 {-# OPTIONS --type-in-type #-}
+{-# OPTIONS --cubical #-}
 module explore where
 open import Cubical.Core.Everything
 
@@ -125,8 +126,9 @@ module higherDimensions where
     ttCube : ttSquare ≡ ttSquare
     ttCube = λ i j k → tt
 
-    -- this is different that ttSquare..
-    -- type equality?
+    -- this is different than ttSquare..
+    -- euqality type equality?
+    -- this can be encoded it regular old Agda
     _ : (tt ≡ tt) ≡ (tt ≡ tt)
     _ = λ i → tt ≡ tt   
 
@@ -157,4 +159,88 @@ module squareOps
     diag : a ≡ b 
     diag = λ i → s i i
 
-    
+
+    -- fancy ops
+    -- flip a square
+    sym : {A : Set} {a b : A} → a ≡ b → b ≡ a 
+    sym = λ p i → p (~ i )
+
+    flip : (sym q) ≡ (sym p)
+    flip = λ i j → s (~ i) (~ j)
+
+
+module HITs where
+    open import Cubical.Foundations.Prelude
+    open import Cubical.Foundations.Isomorphism
+    open import Agda.Builtin.Nat
+
+    data Int : Type where
+        pos : Nat → Int
+        neg : Nat → Int
+        zro : pos 0 ≡ neg 0
+
+    succ : Int → Int
+    succ (pos x) = pos (suc x)
+    succ (neg 0) = pos 1
+    succ (neg (suc x)) = neg x
+    succ (zro i) = pos 1
+    -- last pattern is subject to the constraint 
+    --  f (p i0) ≐ f (p i1)  where ≐ denotes definitional equality
+    -- or 
+    -- succ (pos 0) ≐ succ (neg 0)
+
+    -- asymetric integer type
+    data Int' : Type where
+        pos' : Nat → Int' 
+        neg' : Nat → Int'
+
+    asym→sym : Int' → Int 
+    asym→sym (pos' x) = pos x
+    asym→sym (neg' x) = neg (suc x)
+
+    sym→asym : Int → Int' 
+    sym→asym (pos x) = pos' x
+    sym→asym (neg 0) = pos' 0
+    sym→asym (neg (suc x)) = neg' x
+    sym→asym (zro i) = pos' 0
+
+
+    isoint : Iso Int Int'
+    isoint = iso 
+        sym→asym 
+        asym→sym 
+        (λ{ (pos' x) → refl
+          ; (neg' x) → refl}) 
+        (λ{ (pos x) → refl
+          ; (neg zero) → zro
+          ; (neg (suc x)) → refl
+          ; (zro i) → λ j → zro (i ∧ j)})
+
+    inteq : Int ≡ Int'
+    inteq = isoToPath isoint
+
+module squarehcomp
+        {A : Type}
+        ( a b c d : A)
+        (p : a ≡ b)
+        (q : a ≡ c)
+        (r : b ≡ d)
+    where
+
+    np : c ≡ d 
+    np i = hcomp 
+        (λ j → 
+            λ{ (i = i0) → q j ; 
+               (i = i1) → r j }) 
+        (p i)
+
+module hcomp where
+    open import Agda.Builtin.Nat
+
+
+    data ΔInt : Type where
+        _⊙_ : Nat → Nat → ΔInt
+        cancel : ∀ a b → a ⊙ b ≡ suc a ⊙ suc b
+
+    --question : ∀ a b i → cancel a b i ≡ cancel (suc a) (suc b) i 
+    --question a b i j = hcomp {!   !} {!   !}
