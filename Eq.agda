@@ -304,6 +304,11 @@ module 2,4 where
     ... | eq = {!   !} 
     -- (f (f x) ≡ f x) ≡ (f(f x) ≡ f x )
 
+
+    -- Page 77
+    -- Claims that ISO is not well behaved
+    -- Instead, use adjoint equivalences?
+
     -- Def 2.4.6
     -- quasi-inverse
     open import Agda.Builtin.Sigma 
@@ -320,7 +325,7 @@ module 2,4 where
     qt {A}{x}{y}{P}{refl}= transport {A} {P} y x refl , ((λ x₁ → refl) , λ x → refl)
 
     isequiv⦅_⦆ : {A B : Set}(f : A → B) → Set 
-    isequiv⦅_⦆ {A} {B} f = Σ (B → A) (λ g → (f ∘ g) ∼ id) × (Σ (B → A) λ h → (h ∘ f) ∼ id)
+    isequiv⦅_⦆ {A} {B} f = (Σ (B → A) (λ g → (f ∘ g) ∼ id)) × (Σ (B → A) λ h → (h ∘ f) ∼ id)
 
     _≈_ : (A B : Set) → Set 
     A ≈ B = Σ (A → B) λ f → isequiv⦅ f ⦆
@@ -345,3 +350,18 @@ module 2,4 where
     ts : {A B : Set} → A ≈ B → B ≈ A 
     ts = λ{(A→B , (B→A , snd₁) , B→A' , snd₂) → 
             B→A , (A→B , {!  snd₂ !}) , A→B , snd₁}
+
+    ttr : {A B C : Set} → (A ≈ B) → (B ≈ C) → A ≈ C 
+    ttr {A} {B} {C} (f , (finv₁ , fprf₁) , (finv₂ , fprf₂)) 
+                    (g , (ginv₁ , gprf₁) , (ginv₂ , gprf₂)) = 
+                    
+                    (g ∘ f) , ((finv₁ ∘  ginv₁) , {!   !} ) , (finv₂ ∘ ginv₂) , {!   !}
+
+
+-- 2.5
+module 2,5 where 
+    open import Data.Product
+    -- Product
+    _ : {A B : Set} → {x y : A × B} → (p : x ≡ y) → 
+        (fst x ≡ fst y) × (snd x ≡ snd y)
+    _ = ?
