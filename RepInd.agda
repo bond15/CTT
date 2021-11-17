@@ -190,8 +190,8 @@ module CTT where
     _ : isProp Unit 
     _ = λ { unit unit → refl }
 
-    _ : isSet Unit 
-    _ = λ {unit unit  → λ u≡u u≡u' → λ i j → {! unit  !} }
+   -- _ : isSet Unit 
+   -- _ = λ {unit unit  → λ u≡u u≡u' → λ i j → {! unit  !} }
     -- can't just pattern match on refl anymore since equality types can have more inhabitants  
 
 
@@ -214,7 +214,52 @@ module CTT where
         StrEquiv : (Set₀ → Set₀) → Set₁
         StrEquiv S = (A B : TypeWithStr S) → fst A ≃ fst B → Set₀
 
-        _≃_[_] : {S : Set₀ → Set₀} (A B : TypeWithStr S)(ι : StrEquiv S) 
-            constructor _≃[_]_ 
-            field 
+        _≃_[_] : {S : Set₀ → Set₀} (A B : TypeWithStr S)(ι : StrEquiv S) → Set₀
+        A ≃ B [ ι ] = Σ (fst A ≃ fst B) λ e → ι A B e
 
+        UnivalentStr : (S : Set₀ → Set₀) → StrEquiv S → Set₁
+        UnivalentStr S ι = {A B : TypeWithStr S}(e : fst A ≃ fst B) → 
+                (ι A B e) ≃ PathP (λ i → S (ua e i)) (snd A) (snd B)
+
+        SIP : {S : Set₀ → Set₀}{ι : StrEquiv S} → UnivalentStr S ι → (A B : TypeWithStr S) → 
+            (_≃_[_] A B ι) ≃ (A ≡ B)
+        SIP = {!   !} 
+
+        sip : {S : Set₀ → Set₀}{A B : TypeWithStr S}{ι : StrEquiv S}{θ : UnivalentStr S ι} → (_≃_[_] A B ι) → A ≡ B
+        sip{S}{A}{B}{ι}{θ} (e , p) i = (ua e i) , equivFun (θ e) p i
+
+        module SIP-Ex where
+            RawMonoidStructure : Set₀ → Set₀
+            RawMonoidStructure X = X × (X → X → X)
+
+            RawMonoid : Set₁
+            RawMonoid = TypeWithStr RawMonoidStructure
+
+            MonoidAxioms : RawMonoid → Set 
+            MonoidAxioms (X , ε , _⋆_) = (isSet X) 
+                                        × (∀ x y z → x ⋆ (y ⋆ z) ≡ (x ⋆ y) ⋆ z)
+                                        × (∀ x → (x ⋆ ε ≡ x) × (ε ⋆ x ≡ x))
+            
+            MonoidStructure : Set₀ → Set₀
+            MonoidStructure X = Σ (RawMonoidStructure X) λ{( ε , _⋆_) → MonoidAxioms (X , ε , _⋆_)}
+
+            Monoid : Set₁
+            Monoid = TypeWithStr MonoidStructure
+
+            
+            MonoidEquiv : (M N : Monoid) → fst M ≃ fst N → Set 
+            MonoidEquiv (_ , (εₘ , _⋆ₘ_) , _) (_ , (εₙ , _⋆ₙ_), _ ) (ϕ , _) =
+                 -- monoid homomorphism
+                 (ϕ εₘ ≡ εₙ) -- 
+                 × (∀ x y → ϕ (x ⋆ₘ y) ≡ ϕ x ⋆ₙ ϕ y)
+
+            _ : UnivalentStr RawMonoidStructure {!   !}
+            _ = {!   !}
+
+        module buildingStructures where
+            data Structures (S T : Set₀ → Set₀)(X : Set₀): Set₁ where 
+                var : X → Structures S T X
+                const : (A : Set₀) → Structures S T X
+                prod : S X × T X → Structures S T X
+                fun : (S X → T X) → Structures S T X
+                may : Maybe (S X) → Structures S T X 
