@@ -36,7 +36,6 @@ MonoidStructure = AxiomsStructure RawMonoidStructure MonoidAxioms
 Monoid : Set₁
 Monoid = TypeWithStr ℓ-zero MonoidStructure
 
-
 RawMonoid : Set₁
 RawMonoid = TypeWithStr _ RawMonoidStructure
 
@@ -48,8 +47,7 @@ RawMonoidEquivStr = AutoEquivStr RawMonoidStructure
 
 rawMonoidUnivalentStr : UnivalentStr _ RawMonoidEquivStr
 rawMonoidUnivalentStr = autoUnivalentStr RawMonoidStructure
-
-
+{-
 isPropMonoidAxioms : (M : Set₀) (s : RawMonoidStructure M) → isProp (MonoidAxioms M s)
 isPropMonoidAxioms M (e , _·_) =
   HLevels.isPropΣ
@@ -68,7 +66,7 @@ monoidUnivalentStr = axiomsUnivalentStr _ isPropMonoidAxioms rawMonoidUnivalentS
 
 MonoidΣPath : (M N : Monoid) → (M ≃[ MonoidEquivStr ] N) ≃ (M ≡ N)
 MonoidΣPath = SIP monoidUnivalentStr
-
+-}
 InducedMonoid : (M : Monoid) (N : RawMonoid) (e : M .fst ≃ N .fst)
                 → RawMonoidEquivStr (Monoid→RawMonoid M) N e → Monoid
 InducedMonoid M N e r =
@@ -155,3 +153,11 @@ module Example where
    -- Raw monoid (Bool, false, _||_)
    -- An equivalence that obeys the monoid homomorpism
    -- a raw monoid homomorphism between the two structures
+    open Semigroup.IsSemigroup
+
+    -- derived proof of the monoid laws from the induced monoid
+    _ : ∀ x y z → x || (y || z) ≡ (x || y) || z 
+    _ = B∨-Monoid .snd .snd .fst .assoc
+
+    _ : ∀ x → ((x || false) ≡ x) × ((false || x) ≡ x)
+    _ = B∨-Monoid .snd .snd .snd
