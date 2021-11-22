@@ -1,4 +1,4 @@
 name: ctt
 include: .
 depend: cubical standard-library
-flags: 
+flags: --cubical

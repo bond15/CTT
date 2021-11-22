@@ -257,9 +257,48 @@ module CTT where
             _ = {!   !}
 
         module buildingStructures where
-            data Structures (S T : Set₀ → Set₀)(X : Set₀): Set₁ where 
+           {- data Structures (S T : Set₀ → Set₀)(X : Set₀): Set₁ where 
                 var : X → Structures S T X
                 const : (A : Set₀) → Structures S T X
                 prod : S X × T X → Structures S T X
                 fun : (S X → T X) → Structures S T X
-                may : Maybe (S X) → Structures S T X 
+                may : Maybe (S X) → Structures S T X  
+            -}
+            const : {A : Set₀} → Set₀ → Set₀
+            const {A} = λ _ → A
+
+            constStrEquiv : {A : Set₀} → StrEquiv (const {A})
+            constStrEquiv (_ , a) (_ , a') _ = a ≡ a'
+                        
+            pointed : Set₀ → Set₀
+            pointed = λ X → X
+
+            record Foo : Set where 
+                field
+                    foo : Unit
+            open Foo
+            
+            _ : Foo → Unit 
+            _ = λ F → F .foo
+
+            -- What do .fst and .snd do...?
+            -- oh.. just "postfix" record accessors?
+            pt : (A : TypeWithStr pointed) → A .fst
+            pt A = A .snd
+
+            pointedStrEquiv : StrEquiv pointed 
+            pointedStrEquiv A B f = equivFun f (A .snd) ≡ B .snd
+
+            ProductStructure : (S T : Set₀ → Set₀) → Set₀ → Set₀
+            ProductStructure S T X = S X × T X
+
+            ProductStrEquiv : 
+                {S T : Set₀ → Set₀}
+                (ι₁ : StrEquiv S)
+                (ι₂ : StrEquiv T)
+                → StrEquiv (ProductStructure S T)
+            ProductStrEquiv ι₁ ι₂ (X , s₁ , s₂) (Y , t₁ , t₂) f = (ι₁ (X , s₁) (Y , t₁) f) ×  ι₂ (X , s₂) (Y , t₂) f
+
+            
+
+            
