@@ -286,6 +286,22 @@ module univalence where
     -- something we can't write in coq? (or w/o eq_rect)
     huh : ( n : ℕ) → (a : ty (n + 1)) →  (b : ty (1 + n)) → PathP (λ i → tyeq {n} i) a b
     huh n c c i = transp (λ j → tyeq {n} (i ∧ j) ) ( ~ i ) c
+    
+    {- 
+    Inductive ty (n : nat) : Type := c.
+    Lemma bar : forall (n : nat)(a : ty (n+1)) (b : ty (1 +n)), @eq_rect nat (n + 1) ty a (1 + n) (np1 n) = b.
+    Proof.
+      intros. destruct (eq_rect (n + 1) ty a (1 + n) (np1 n)). destruct b. reflexivity.
+    Qed.
+    where bar = 
+    fun (n : nat) (a : ty (n + 1)) (b : ty (1 + n)) =>
+    let t : ty (1 + n) := eq_rect (n + 1) ty a (1 + n) (np1 n) in
+    match t as t0 return (t0 = b) with
+    | c _ => match b as t0 return (c (1 + n) = t0) with
+             | c _ => eq_refl
+             end
+    end
+    -}
 
     listnp1 : {n : ℕ} → (listn (n + 1)) ≡ (listn (1 + n))
     listnp1 = cong listn np1
