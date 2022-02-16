@@ -112,8 +112,33 @@ module Jdef where
             trans p (trans q r) ≡ trans (trans p q) r
     lemma₄ {A} {x} {y} {w} {z} {refl} {refl} {refl} = refl 
 
-    Ω² : {ℓ : Level}{A : Set ℓ}{a : A} → Set ℓ 
-    Ω² {ℓ}{A} {a} = refl {ℓ} {A} {a} ≡ refl
+    --Ω² : {ℓ : Level}{A : Set ℓ}{a : A} → Set ℓ 
+    --Ω² {ℓ}{A} {a} = refl {ℓ} {A} {a} ≡ refl
+
+    --Ω : {ℓ : Level}{A : Set ℓ}(a : A)→ Set ℓ
+    --Ω a = a ≡ a
+
+    Ω : (A : Set₀) (a : A) → Set₀ 
+    Ω A a = a ≡ a
+
+    hhh : Ω Bool tt → Unit 
+    hhh refl = unit
+
+    ggg : {A : Set₀} {a : A} → Ω A a → Unit 
+    ggg x = {! x  !}
+
+    _⊙_ : {A : Set₀} {a : A} → Ω A a → Ω A a → Ω A a
+    x ⊙ y = {! !} 
+
+
+    --Ω² : (A : Set₀) {a : A} → Set₀
+    --Ω² A {a} = Ω (a ≡ a) {(refl {lzero} {A} {a})}
+
+
+    --refl {lzero} {A} {a} ≡ refl
+
+   -- Ω² : {A : Set₀} {a : A} → Set₁
+    --Ω² {A} {a} = Ω {lsuc lzero} {A} (refl {lzero} {A} {a})
 
     --Eckmann-Hilton : {!   !}
     --Eckmann-Hilton = {!   !}
@@ -362,6 +387,6 @@ module 2,4 where
 module 2,5 where 
     open import Data.Product
     -- Product
-    _ : {A B : Set} → {x y : A × B} → (p : x ≡ y) → 
-        (fst x ≡ fst y) × (snd x ≡ snd y)
-    _ = ?
+    --_ : {A B : Set} → {x y : A × B} → (p : x ≡ y) → 
+    --    (fst x ≡ fst y) × (snd x ≡ snd y)
+    --_ = ?
