@@ -17,37 +17,93 @@ open Auto using (AutoEquivStr ; autoUnivalentStr)
 import Cubical.Algebra.Semigroup.Base          as Semigroup
 import Cubical.Structures.Axioms as Axioms
 open Axioms using (AxiomsStructure ; AxiomsEquivStr ; axiomsUnivalentStr)
-import Cubical.Foundations.SIP  as SIP
-open SIP using (TypeWithStr ; UnivalentStr ; _≃[_]_ ; StrEquiv ; SIP)
+import Cubical.Foundations.SIP as SIP
+open SIP using (TypeWithStr ; UnivalentStr ; _≃[_]_ ; StrEquiv ; SIP ; typ)
 import Cubical.Foundations.Equiv as Equivalences
 open Equivalences using (_≃_)
 open import Cubical.Data.Sigma.Base
 
+
+
+{-
+Univalence for structures
+
+
+SIP : A ≃[ ι ] B ≃ (A ≡ B)
+  in the context
+    {S : Type ℓ₁ → Type ℓ₂} {ι : StrEquiv S ℓ₃}
+    (θ : UnivalentStr S ι) (A B : TypeWithStr ℓ₁ S)
+
+with the specific example in mind
+  (M N : Monoid) → (M ≃[ MonoidEquivStr ] N) ≃ (M ≡ N)
+
+
+
+All of the following is to provide a framework for the following idea
+
+InducedMonoid : (M : Monoid) (N : RawMonoid) (e : typ M ≃ typ N ) → RawMonoidEquivStr (Monoid→RawMonoid M) N e → Monoid
+
+-}
+
+
+-- A Raw Monoid on for carrier X is a neutral element and a binary operation
 RawMonoidStructure : Set₀ → Set₀ 
 RawMonoidStructure X = X × (X → X → X)
 
+-- Monoid axioms take in a carrier M, a neutral element, and a binary operation
+-- It returns the type representing all the laws a raw monoid should obey
 MonoidAxioms : (M : Set₀) → RawMonoidStructure M → Set₀
 MonoidAxioms M (e , _·_) = Semigroup.IsSemigroup _·_
                          × ((x : M) → (x · e ≡ x) × (e · x ≡ x))
 
+
+-- AxiomsStructure S axioms X = Σ[ s ∈ S X ] (axioms X s)
+-- An axiom structure is a pair
+-- in this case, a monoid s and a proof that s obeys the monoid laws
 MonoidStructure : Set₀ → Set₀
 MonoidStructure = AxiomsStructure RawMonoidStructure MonoidAxioms
 
+
+{-
+TypeWithStr : (ℓ : Level) (S : Type ℓ → Type ℓ') → Type (ℓ-max (ℓ-suc ℓ) ℓ')
+TypeWithStr ℓ S = Σ[ X ∈ Type ℓ ] S X
+-}
 Monoid : Set₁
-Monoid = TypeWithStr ℓ-zero MonoidStructure
+Monoid = TypeWithStr _ MonoidStructure
 
 RawMonoid : Set₁
 RawMonoid = TypeWithStr _ RawMonoidStructure
 
 Monoid→RawMonoid : Monoid → RawMonoid
-Monoid→RawMonoid (A , r , _) = A , r
+Monoid→RawMonoid (A , (op , e ) , _) = A , (op , e)
 
 -- Derived..
-RawMonoidEquivStr = AutoEquivStr RawMonoidStructure
+RawMonoidEquivStr = AutoEquivStr RawMonoidStructure -- This derives Monoid homomorphism
+{-
+-- An S-structure should have a notion of S-homomorphism, or rather S-isomorphism.
+-- This will be implemented by a function ι : StrEquiv S ℓ'
+-- that gives us for any two types with S-structure (X , s) and (Y , t) a family:
+--    ι (X , s) (Y , t) : (X ≃ Y) → Type ℓ''
+StrEquiv : (S : Type ℓ → Type ℓ'') (ℓ' : Level) → Type (ℓ-max (ℓ-suc (ℓ-max ℓ ℓ')) ℓ'')
+StrEquiv {ℓ} S ℓ' = (A B : TypeWithStr ℓ S) → typ A ≃ typ B → Type ℓ'
+-}
 
+
+
+{-
+Roughly, this derives univalence for a particular structure
+
+UnivalentStr : (S : Type ℓ₁ → Type ℓ₂) (ι : StrEquiv S ℓ₃) → Type (ℓ-max (ℓ-max (ℓ-suc ℓ₁) ℓ₂) ℓ₃)
+UnivalentStr {ℓ₁} S ι =
+  {A B : TypeWithStr ℓ₁ S} (e : typ A ≃ typ B)
+  → ι A B e ≃ PathP (λ i → S (ua e i)) (str A) (str B)
+-}
 rawMonoidUnivalentStr : UnivalentStr _ RawMonoidEquivStr
 rawMonoidUnivalentStr = autoUnivalentStr RawMonoidStructure
 {-
+IGNORE
+
+
 isPropMonoidAxioms : (M : Set₀) (s : RawMonoidStructure M) → isProp (MonoidAxioms M s)
 isPropMonoidAxioms M (e , _·_) =
   HLevels.isPropΣ
@@ -67,7 +123,7 @@ monoidUnivalentStr = axiomsUnivalentStr _ isPropMonoidAxioms rawMonoidUnivalentS
 MonoidΣPath : (M N : Monoid) → (M ≃[ MonoidEquivStr ] N) ≃ (M ≡ N)
 MonoidΣPath = SIP monoidUnivalentStr
 -}
-InducedMonoid : (M : Monoid) (N : RawMonoid) (e : M .fst ≃ N .fst)
+InducedMonoid : (M : Monoid) (N : RawMonoid) (e : typ M ≃ typ N )
                 → RawMonoidEquivStr (Monoid→RawMonoid M) N e → Monoid
 InducedMonoid M N e r =
   Axioms.inducedStructure rawMonoidUnivalentStr M N (e , r)
@@ -92,6 +148,13 @@ module Example where
     K-Bool P Prefl {true} = J (λ{ false _ → Lift ⊥
                                 ; true q → P q }) Prefl
 
+    {-
+    isProp : Type ℓ → Type ℓ
+    isProp A = (x y : A) → x ≡ y
+
+    isSet : Type ℓ → Type ℓ
+    isSet A = (x y : A) → isProp (x ≡ y) 
+    -}
     𝔹-isSet : isSet Bool 
     𝔹-isSet a b = J (λ _ p → ∀ q → p ≡ q) (K-Bool (refl ≡_) refl)
 
@@ -113,7 +176,18 @@ module Example where
 
     open import Cubical.Foundations.Isomorphism using (isoToEquiv ; iso ; Iso)
 
+    {- don't use this equivalence
+    -- because it breaks the monoid homomorphism
+    𝔹≃𝔹' : Bool ≃ Bool 
+    𝔹≃𝔹' = isoToEquiv (iso 
+                        (λ x → x) 
+                        (λ x → x) 
+                        (λ b → refl) 
+                        (λ b → refl))
+    -}
 
+
+    -- an involution
     notnot : ∀ x → not (not x) ≡ x 
     notnot true = refl
     notnot false = refl
@@ -125,19 +199,11 @@ module Example where
                         notnot 
                         notnot)
 
-    -- don't use this equivalence
-    -- because it breaks the monoid homomorphism
-    𝔹≃𝔹' : Bool ≃ Bool 
-    𝔹≃𝔹' = isoToEquiv (iso 
-                        (λ x → x) 
-                        (λ x → x) 
-                        (λ b → refl) 
-                        (λ b → refl))
-
     DeMorgan : ∀ a b → not (a & b) ≡ not a || not b 
     DeMorgan false b = refl
     DeMorgan true b = refl 
 
+    -- monoid homomorphisms (on raw)
     monoidHomo : RawMonoidEquivStr (Monoid→RawMonoid 𝔹∧-Monoid) 𝔹∨-Raw 𝔹≃𝔹
     monoidHomo = -- not ε∧ ≡ ε∨ 
                  -- not true ≡ false  Check!
@@ -160,4 +226,4 @@ module Example where
     _ = B∨-Monoid .snd .snd .fst .assoc
 
     _ : ∀ x → ((x || false) ≡ x) × ((false || x) ≡ x)
-    _ = B∨-Monoid .snd .snd .snd
+    _ = B∨-Monoid .snd .snd .snd 
