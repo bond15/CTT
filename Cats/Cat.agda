@@ -70,6 +70,23 @@ module hlevelExamples where
                                                     ; (j = i0) → h x x k
                                                     ; (j = i1) → h x y k }) x 
 
+module partial where 
+    -- learn all of this https://1lab.dev/1Lab.Path.html#2069
+    open import Data.Bool using (Bool ; true ; false)
+    -- uhm what?
+    -- Partial : I → Type → SSet (proof irrelevent Set?)
+    _ : (i : I) → Partial (~ i ∨ i) Bool 
+    _ = λ i → λ{ (i = i0) → true
+                ;(i = i1) → false }
+
+    i1-is-true : (i : I) → Partial i Bool 
+    i1-is-true i (i = i1) = true
+
+    i0-is-true : (i : I) → Partial (~ i) Bool 
+    i0-is-true i (i = i0) = true
+
+    
+
 record PreCat (o h : Level) : Set (lsuc (o ⊔ h)) where 
     field 
         Ob : Set o
@@ -307,9 +324,28 @@ module maybe where
                                     ; assoc = {!   !}
                                     }
 -}
-     
+module coercion where 
+    coe0→1 : ∀ {ℓ} (A : I → Type ℓ) → A i0 → A i1
+    coe0→1 A a = transp (λ i → A i) i0 a
+    
+    coe0→i : ∀ {ℓ} (A : I → Type ℓ) (i : I) → A i0 → A i
+    coe0→i A i a = transp (λ j → A (i ∧ j)) (~ i) a
 
-module SliceCat {o ℓ} (C : PreCat o ℓ) where 
+    to-pathp : ∀ {ℓ} {A : I → Type ℓ} {x : A i0} {y : A i1}
+         → coe0→1 A x ≡ y
+         → PathP A x y
+    to-pathp {A = A} {x} p i =
+        hcomp (λ j → λ { (i = i0) → x
+                    ; (i = i1) → p j })
+            (coe0→i A i x)
+
+    is-prop→pathp : ∀ {ℓ}{B : I → Set ℓ} → ((i : I) → is-prop (B i))
+        → (b0 : B i0)(b1 : B i1)
+        → PathP (λ i → B i) b0 b1 
+    is-prop→pathp {B = B} hB b0 b1 = to-pathp (hB _ _ _)
+
+-- as a displayed category
+module DisplaySliceCat {o ℓ} (C : PreCat o ℓ) where 
     open PreCat C
 
 
@@ -321,7 +357,7 @@ module SliceCat {o ℓ} (C : PreCat o ℓ) where
             index : Hom over x
     open Slice
 
-
+    -- why is this one parameterized by f ?
     record Slice-hom {x y} (f : Hom x y) (px : Slice x) (py : Slice y) : Set (o ⊔ ℓ) where
         constructor slice-hom 
         private
@@ -345,7 +381,7 @@ module SliceCat {o ℓ} (C : PreCat o ℓ) where
     -}
 
     -- need a type for equality of slice morphisms
-    module _ {x y}{f g : Hom x y}{px : Slice x}{py : Slice y}
+    module spp {x y}{f g : Hom x y}{px : Slice x}{py : Slice y}
              {f' : Slice-hom f px py}{g' : Slice-hom g px py} where
         
         -- if the underlying morphisms f and g are the same..
@@ -353,11 +389,14 @@ module SliceCat {o ℓ} (C : PreCat o ℓ) where
         -- then the commuting diagram should be the same and you have an equality of 
         -- slice homomorphisms
         Slice-pathp : (p : f ≡ g) → (f' .to ≡ g' .to) → PathP (λ i → Slice-hom (p i) px py) f' g'
-        Slice-pathp p p' i .to = p' i
-        Slice-pathp p p' i .commute = {!   !}
+        Slice-pathp = {!   !}
+        --Slice-pathp p p' i .to = p' i
+        --Slice-pathp p p' i .commute = {!   !}
 
     open Displayed
     open CompSqr C
+    open coercion
+    open spp
 
     Slices : Displayed C (o ⊔ ℓ) (o ⊔ ℓ)
     Slices .Ob[_] = Slice
@@ -373,7 +412,252 @@ module SliceCat {o ℓ} (C : PreCat o ℓ) where
             f ∘ y .index ∘ py .to ≡⟨ extendl (px .commute) ⟩ 
             z .index ∘ px .to ∘ py .to ∎)
     Slices .Hom[_]-set = {!   !} -- The tricky one...
-    Slices .idr' = {!   !}
-    Slices .idl' = {!   !}
-    Slices .assoc' = {!   !}
+    Slices .idr' {f = f} f' = Slice-pathp (idr f) (idr (f' .to))
+    Slices .idl' {f = f} f' = Slice-pathp (idl f) (idl (f' .to))
+    Slices .assoc' {f = f} {g = g} {h = h} f′ g′ h′ =
+        Slice-pathp (assoc f g h) (assoc (f′ .to) (g′ .to) (h′ .to))
  
+module SliceCat {o h} (C : PreCat o h) where 
+    open PreCat C
+    
+    record /-Obj (c : Ob) : Set (o ⊔ h) where 
+        no-eta-equality 
+        constructor cut 
+        field
+            {domain} : Ob 
+            map : Hom domain c
+
+    open /-Obj
+
+    record /-Hom {c : Ob} (a b : /-Obj c) : Set h where 
+        no-eta-equality
+        private
+            module a = /-Obj a 
+            module b = /-Obj b 
+        field
+            hmap : Hom a.domain b.domain
+            commutes : b.map ∘ hmap ≡ a.map
+
+    open /-Hom 
+
+    _∘c_ : {a b c : Set} → (b → c)→ (a → b) → a → c
+    g ∘c f = λ x → g ( f x)
+
+    lemma : ∀ {a b c : Set} → (f : b → c) → (g g' : a → b) → (p : g ≡ g') → f ∘c g ≡ f ∘c g' 
+    lemma f g g' p = cong (f ∘c_) p
+
+    lemma'' : ∀ {a b c d : Set} → (p : a ≡ c) → (q : b ≡ c) → (r : a ≡ b) → (a ≡ c) ≡ (b ≡ c)
+    lemma'' {c = c} p q r =  cong (_≡ c) r
+
+    lemma' : ∀ {a b c : Set}(f f' : a → b)(g : b → c)(h : a → c)(p : f ≡ f') → (g ∘c f ≡ h) ≡ (g ∘c f' ≡ h)
+    lemma' f f' g h p = cong (_≡ h) (lemma g f f' p) 
+
+    -- equality of /-Hom 
+    open coercion
+
+    /-Hom-pathp : ∀ {c a a' b b'} (p : a ≡ a') (q : b ≡ b') 
+                    {f : /-Hom {c = c} a b}{f' : /-Hom {c = c} a' b'}
+                    → PathP (λ i → Hom (p i .domain) (q i .domain)) (f .hmap) (f' .hmap) 
+                    → PathP (λ i → /-Hom (p i) (q i)) f f'
+    /-Hom-pathp {c = c}p q {f} {f'} r = path where 
+        path : PathP (λ i → /-Hom (p i) (q i)) f f'
+        path i .hmap = r i -- got this equation..
+        -- but wtf is this...
+        path i .commutes = wat where 
+
+            prp : (i : I) → is-prop (q i .map ∘ r i ≡ p i .map)
+            prp i = Hom-set (p i .domain) c 
+                    (q i .map ∘ r i)
+                    -- = 
+                    (p i .map)
+
+            wat : _ 
+            wat = is-prop→pathp prp (f .commutes) (f' .commutes) i
+            -- recall if something is a prop, then its inhabitants are equal
+
+    /-Hom-Path : ∀ {c a b}{f g : /-Hom {c = c} a b}
+        → (f .hmap ≡ g .hmap)
+        → f ≡ g
+    /-Hom-Path = /-Hom-pathp refl refl
+
+    module wtf where 
+        postulate
+            c : Ob
+            x y x' y' : /-Obj c
+            p : x ≡ x'
+            q : y ≡ y' 
+            i : I
+            f : /-Hom x y 
+            f' : /-Hom x' y'
+            r : PathP (λ i → Hom (p i .domain) (q i .domain)) (f .hmap) (f' .hmap) 
+
+        is : is-set (Hom (p i .domain) c)
+        is = Hom-set (p i .domain) c
+
+        _ : Hom (domain (p i)) c
+        _ = p i .map
+
+        _ : is-prop (q i .map ∘ r i ≡ p i .map)
+        _ = is (q i .map ∘ r i) (p i .map) -- this is the equation I needed 
+        -- but it was the special case
+        -- y .map ∘ r i ≡ x .map
+        -- where q := refl {y} and p := refl {x}
+
+        -- so
+        _ : is-prop (q i .map ∘ r i ≡ p i .map)
+        _ = Hom-set (p i .domain) c (q i .map ∘ r i) (p i .map)
+
+        -- so what if that's a prop.. why did we use is-prop→pathp ?
+
+
+
+    open CompSqr C
+    Slice : Ob → PreCat _ _ 
+    Slice c = p where 
+        p : PreCat _ _ 
+        p .Ob = /-Obj c
+        p .Hom = /-Hom
+        p .Hom-set = {!   !}
+        -- nested copatterns ??
+        p .id .hmap = id
+        p .id .commutes = idr _
+        ----------------
+        p ._∘_ {x} {y} {z} g f = fog where
+            open /-Obj z renaming (map to zm)
+            open /-Obj y renaming (map to ym)
+            open /-Obj x renaming (map to xm)
+            open /-Hom f renaming (hmap to f-hmap ; commutes to f-commutes)
+            open /-Hom g renaming (hmap to g-hmap ; commutes to g-commutes) 
+            fog : /-Hom _ _ 
+            fog .hmap = g-hmap ∘ f-hmap
+            fog .commutes = (zm ∘ g-hmap ∘ f-hmap) ≡⟨ pulll g-commutes ⟩ 
+                            (ym ∘ f-hmap) ≡⟨ f-commutes ⟩ 
+                            xm ∎
+        p .idl f = /-Hom-Path (idl (f .hmap))
+        p .idr f = /-Hom-Path (idr (f .hmap))
+        p .assoc f g h = /-Hom-Path (assoc (f .hmap) (g .hmap) (h .hmap))
+
+
+module testing-unnamed-modules where
+    open import Data.Bool
+    data F : Set where f : F
+
+    module _{test : Bool} where 
+        value : F 
+        value = f
+    
+    module named {test : Bool} where 
+        value' : F 
+        value' = f
+
+    module use where 
+        _ : F 
+        _ = value {true} -- Did not have to open the module above to access 'value'
+                         -- but 'value' needed an implicit bool arg
+
+        _ : F 
+        _ = named.value' {true}
+
+
+   -- https://1lab.dev/Cat.Instances.Slice.html#2190
+    -- alternative definition of slice category
+    --https://1lab.dev/Cat.Instances.Slice.html
+
+    --https://1lab.dev/Cat.Functor.Pullback.html
+    --https://1lab.dev/Cat.Diagram.Pullback.html   
+
+module Pullback {ℓ ℓ'} (C : PreCat ℓ ℓ') where 
+    open PreCat C
+
+    private variable
+        P' X Y Z : Ob 
+        h p₁' p₂' : Hom X Y
+
+        
+    record is-pullback {P} (p₁ : Hom P X) (f : Hom X Z) (p₂ : Hom P Y) (g : Hom Y Z) : Set (ℓ ⊔ ℓ') where
+        field
+            square : f ∘ p₁ ≡ g ∘ p₂
+
+            limiting : ∀ {P'} {p₁' : Hom P' X} {p₂' : Hom P' Y} 
+                → f ∘ p₁' ≡ g ∘ p₂' → Hom P' P
+
+            p₁∘limiting : {p : f ∘ p₁' ≡ g ∘ p₂'} → p₁ ∘ limiting p ≡ p₁'
+            p₂∘limiting : {p : f ∘ p₁' ≡ g ∘ p₂'} → p₂ ∘ limiting p ≡ p₂'
+
+            unique : {p : f ∘ p₁' ≡ g ∘ p₂'} {lim' : Hom P' P}
+                → p₁ ∘ lim' ≡ p₁'
+                → p₂ ∘ lim' ≡ p₂'
+                → lim' ≡ limiting p
+
+    record Pullback {X Y Z : Ob} (f : Hom X Z) (g : Hom Y Z) : Set (ℓ ⊔ ℓ') where 
+        field
+            {apex} : Ob 
+            p₁ : Hom apex X 
+            p₂ : Hom apex Y 
+            has-is-pb : is-pullback p₁ f p₂ g
+
+-- pullbacks in Agda
+module pullagda where
+    open import Agda.Primitive
+    open PreCat
+    open Pullback
+    open Pullback.Pullback
+    open Pullback.is-pullback
+
+    Agda : PreCat (lsuc lzero) lzero 
+    Agda .Ob = Set₀
+    Agda .Hom = λ X Y → X → Y
+    Agda .Hom-set = λ X Y → λ f g f≡g₁ f≡g₂ → {!   !}
+    Agda ._∘_ = λ f g x → f (g x)
+    Agda .id = λ x → x
+    Agda .idr = λ f → refl
+    Agda .idl = λ f → refl
+    Agda .assoc = λ f g h → refl 
+
+
+    open PreCat Agda
+    open import Data.Product
+    pbAgda  : {X Y Z : Set₀} (f : X → Z) (g : Y → Z) → Set₀
+    pbAgda {X} {Y} f g =  Σ (X × Y) λ xy → f (fst xy) ≡ g (snd xy)
+
+    pullbacks : ∀ {X Y Z} f g → Pullback Agda {X} {Y} {Z} f g
+    pullbacks {X} {Y} {Z} f g = pb where 
+        pb : Pullback Agda f g
+        pb .apex = pbAgda f g  
+        pb .p₁ = λ x → fst (fst x)
+        pb .p₂ = λ x → snd (fst x)
+        pb .has-is-pb = ipb where 
+            ipb : is-pullback Agda (pb .p₁) f (pb .p₂) g
+            ipb .square = funExt λ x → snd x 
+            ipb .limiting = λ p → λ P' → {! p  !} , {!  !} -- universal property of products
+            ipb .p₁∘limiting = {!   !}
+            ipb .p₂∘limiting = {!   !}
+            ipb .unique = {!   !}
+
+open Pullback
+module ChangeBase{o ℓ}{C : PreCat o ℓ}
+   (pullbacks : ∀{X Y Z} f g → Pullback C {X} {Y} {Z} f g) where 
+    -- ^ how to provide this function for Precat Agda for example?
+
+    open PreCat C
+    open SliceCat C
+    open Functor
+    open SliceCat./-Obj
+    open SliceCat./-Hom
+    open Pullback.Pullback 
+
+    module _ {X Y : Ob}(f : Hom Y X) where 
+        Base-Change : Functor (Slice X) (Slice Y)
+        Base-Change .F₀ x = ob where 
+            ob : /-Obj Y 
+            ob .domain = pullbacks (x .map) f .apex
+            ob .map    = pullbacks (x .map) f .p₂
+            
+        Base-Change .F₁ {x} {y} f = fn where 
+            fn : /-Hom (Base-Change .F₀ x) (Base-Change .F₀ y) 
+            fn .hmap = {!   !}
+            fn .commutes = {!   !}
+
+        Base-Change .F-id = {!   !}
+        Base-Change .F-∘ = {!   !} 
+  
